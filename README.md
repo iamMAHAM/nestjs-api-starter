@@ -48,26 +48,60 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 ## Layout
 
 ```
-prisma/schema.prisma          models (Better Auth + your own)
-src/
-  env.ts                      Zod env schema + AppConfigService type
-  auth/
-    auth.config.ts            createAuth(env) factory
-    auth.cli.ts               entry point for @better-auth/cli only
-    auth.module.ts            AuthModule.forRootAsync
-  prisma/                     global PrismaService
-  i18n/                       service, middleware, locales, scripts
-  common/
-    errors/                   BusinessError + error code catalogue
-    filters/                  business, Zod validation, catch-all
-    pipes/                    locale-aware Zod pipe
-  validators/                 shared Zod schemas (auth, pagination, dates)
-  modules/
-    health/                   liveness + database readiness probe
-    users/                    reference module: Zod DTOs, service, controller
-  generated/prisma/           Prisma client (gitignored)
-test/                         e2e specs
+.
+├── prisma/
+│   └── schema.prisma                 models (Better Auth + your own)
+├── prisma.config.ts                  Prisma 7 CLI config — holds the datasource URL
+├── src/
+│   ├── main.ts                       bootstrap: helmet, CORS, prefix, Swagger
+│   ├── app.module.ts                 ConfigModule + global pipe, guard, filters
+│   ├── env.ts                        Zod env schema + AppConfigService type
+│   │
+│   ├── auth/
+│   │   ├── auth.config.ts            createAuth(env) factory
+│   │   ├── auth.cli.ts               entry point for @better-auth/cli only
+│   │   └── auth.module.ts            AuthModule.forRootAsync
+│   │
+│   ├── prisma/
+│   │   ├── prisma.service.ts         PrismaClient + lifecycle hooks
+│   │   └── prisma.module.ts          @Global
+│   │
+│   ├── i18n/
+│   │   ├── i18n.service.ts           t() / tLoose() / tFor(locale)
+│   │   ├── i18n.middleware.ts        resolves the locale, stores it in ALS
+│   │   ├── locale-context.ts         AsyncLocalStorage
+│   │   ├── settings.ts               locales, namespaces, defaults
+│   │   ├── locales/{en,fr}/          api · auth · errors · users
+│   │   ├── generated/                translation types (committed)
+│   │   └── scripts/                  gen-types · check-parity
+│   │
+│   ├── common/
+│   │   ├── errors/                   BusinessError + error code catalogue
+│   │   ├── filters/                  business · Zod validation · catch-all
+│   │   └── pipes/                    locale-aware Zod pipe
+│   │
+│   ├── validators/                   shared Zod schemas
+│   │   ├── auth/                     sign-in · sign-up · password
+│   │   └── shared/                   locale · pagination · iso-date
+│   │
+│   ├── modules/
+│   │   ├── health/                   liveness + database readiness probe
+│   │   └── users/                    reference module — copy this one
+│   │       ├── users.dto.ts          Zod schemas → createZodDto
+│   │       ├── users.service.ts      business logic, throws BusinessError
+│   │       ├── users.controller.ts   routes, @Session(), @ZodResponse
+│   │       └── users.service.spec.ts
+│   │
+│   └── generated/prisma/             Prisma client (gitignored)
+│
+├── test/                             e2e specs
+├── biome.jsonc · lefthook.yml        lint/format + git hooks
+├── vitest.config.ts · .e2e.ts        unit + e2e runners
+└── Dockerfile · docker-compose.yml   API image + Postgres 17
 ```
+
+Unit tests live next to the code they cover (`*.spec.ts`); only e2e specs sit in
+`test/`.
 
 ## Configuration
 
