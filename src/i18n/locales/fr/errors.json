@@ -1,0 +1,8 @@
+{
+	"INTERNAL_ERROR": "Une erreur inattendue est survenue. Veuillez réessayer.",
+	"VALIDATION_FAILED": "Certains champs sont invalides.",
+	"RATE_LIMITED": "Trop de tentatives, réessayez dans quelques minutes.",
+	"NOT_FOUND": "La ressource demandée est introuvable.",
+	"FORBIDDEN": "Vous n'êtes pas autorisé à effectuer cette action.",
+	"UNAUTHORIZED": "Vous devez être connecté pour faire cela."
+}

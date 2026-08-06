@@ -1,0 +1,20 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: '*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}'
+      run: bunx --bun biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+    - name: types
+      glob: '*.ts'
+      run: bun run check-types
+
+    - name: i18n-parity
+      glob: 'src/i18n/locales/**/*.json'
+      run: bun run i18n:check
+
+pre-push:
+  jobs:
+    - name: tests
+      run: bun run test

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist
+build
+
+# Testing
+coverage
+
+# Prisma generated client
+src/generated
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors / OS
+.DS_Store
+*.pem
+.idea

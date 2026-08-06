@@ -1,0 +1,8 @@
+{
+	"INTERNAL_ERROR": "An unexpected error occurred. Please try again.",
+	"VALIDATION_FAILED": "Some fields are invalid.",
+	"RATE_LIMITED": "Too many attempts, try again in a few minutes.",
+	"NOT_FOUND": "The requested resource was not found.",
+	"FORBIDDEN": "You are not allowed to perform this action.",
+	"UNAUTHORIZED": "You must be signed in to do that."
+}

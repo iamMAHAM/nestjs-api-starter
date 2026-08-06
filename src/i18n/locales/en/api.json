@@ -1,0 +1,6 @@
+{
+	"healthcheck": {
+		"ok": "API is up.",
+		"degraded": "API is degraded."
+	}
+}
