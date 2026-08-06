@@ -25,6 +25,8 @@ describe('UsersService', () => {
 
 	// Guards the emitDecoratorMetadata setup: without it Nest injects `undefined`
 	// and every service silently breaks at the first property access.
+	// See the `tsx` note in the README — this is the canary for that whole class
+	// of failure.
 	it('receives PrismaService through constructor injection', () => {
 		expect(users).toBeInstanceOf(UsersService);
 		expect(Reflect.get(users, 'prisma')).toBe(prismaMock);

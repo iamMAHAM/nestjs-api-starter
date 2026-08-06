@@ -1,7 +1,7 @@
 {
 	"name": "nexasmi-api",
 	"version": "0.1.0",
-	"description": "NestJS API starter \u2014 Better Auth, Prisma, Zod, i18n, Biome",
+	"description": "NestJS API starter — Better Auth, Prisma, Zod, i18n, Biome",
 	"private": true,
 	"license": "UNLICENSED",
 	"type": "module",
@@ -25,7 +25,7 @@
 		"db:migrate": "prisma migrate dev",
 		"db:deploy": "prisma migrate deploy",
 		"db:studio": "prisma studio",
-		"auth:generate": "better-auth generate --config src/auth/auth.config.ts --output prisma/schema.prisma",
+		"auth:generate": "better-auth generate --config src/auth/auth.cli.ts --output prisma/schema.prisma",
 		"i18n:gen-types": "tsx src/i18n/scripts/gen-types.ts",
 		"i18n:check": "tsx src/i18n/scripts/check-parity.ts",
 		"prepare": "lefthook install",
@@ -33,6 +33,7 @@
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.1.28",
+		"@nestjs/config": "^4.0.4",
 		"@nestjs/core": "^11.1.28",
 		"@nestjs/platform-express": "^11.1.28",
 		"@nestjs/swagger": "^11.4.6",

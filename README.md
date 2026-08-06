@@ -6,6 +6,7 @@ Base for all my NestJS APIs. Derived from
 
 | Area            | Choice                                                        |
 | --------------- | ------------------------------------------------------------- |
+| Config          | `@nestjs/config` + `ConfigService`, Zod-validated at boot      |
 | Runtime         | Node ≥ 22.12, **native ESM**, NestJS 11                        |
 | Package manager | Bun                                                            |
 | Lint / format   | Biome 2 (`biome.jsonc`)                                        |
@@ -49,8 +50,11 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 ```
 prisma/schema.prisma          models (Better Auth + your own)
 src/
-  config/env.ts               env vars validated by Zod, boot fails if invalid
-  auth/                       Better Auth instance + Nest module
+  env.ts                      Zod env schema + AppConfigService type
+  auth/
+    auth.config.ts            createAuth(env) factory
+    auth.cli.ts               entry point for @better-auth/cli only
+    auth.module.ts            AuthModule.forRootAsync
   prisma/                     global PrismaService
   i18n/                       service, middleware, locales, scripts
   common/
@@ -64,6 +68,30 @@ src/
   generated/prisma/           Prisma client (gitignored)
 test/                         e2e specs
 ```
+
+## Configuration
+
+`ConfigModule.forRoot({ validate })` is registered globally in `app.module.ts`
+with the Zod schema from `src/env.ts`. A missing or malformed variable fails the
+boot and names the offending fields.
+
+Type `ConfigService` with `AppConfigService` to get the **parsed** values back —
+`PORT` is a `number`, `CORS_ORIGINS` an already-split `string[]`:
+
+```ts
+constructor(@Inject(ConfigService) private readonly config: AppConfigService) {}
+this.config.get('PORT', { infer: true }); // number
+```
+
+`LoggerModule`, `ThrottlerModule` and `AuthModule` are declared with
+`forRootAsync` and read their config the same way. In tests, override with
+`ConfigModule.forRoot({ validate: () => … })` or `overrideProvider(ConfigService)`.
+
+**One deliberate exception:** `src/auth/auth.cli.ts` loads and validates the
+environment itself. `@better-auth/cli generate` imports that file standalone to
+derive the Prisma models — it runs with no Nest container, so no `ConfigService`.
+The file does nothing but `createAuth(validateEnv(process.env))`; the app never
+imports it.
 
 ## Conventions
 

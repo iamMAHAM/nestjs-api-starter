@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import type { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 
 const csv = z
@@ -11,7 +11,7 @@ const csv = z
 	)
 	.pipe(z.array(z.string()).min(1));
 
-const envSchema = z.object({
+export const envSchema = z.object({
 	NODE_ENV: z
 		.enum(['development', 'test', 'production'])
 		.default('development'),
@@ -39,15 +39,31 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-const parsed = envSchema.safeParse(process.env);
+/**
+ * Type `ConfigService` with this to get exact types out of `get()`:
+ *
+ * ```ts
+ * constructor(private readonly config: AppConfigService) {}
+ * this.config.get('PORT', { infer: true }); // number, not string | undefined
+ * ```
+ *
+ * The `true` marks the config as validated, which drops `undefined` from the
+ * return type — safe because `validateEnv` throws on a bad environment.
+ */
+export type AppConfigService = ConfigService<Env, true>;
 
-if (!parsed.success) {
-	const details = z.prettifyError(parsed.error);
-	// Fail loudly and early — a half-configured API is worse than no API.
-	throw new Error(`Invalid environment variables:\n${details}`);
-}
-
-export const env: Readonly<Env> = Object.freeze(parsed.data);
-
-export const isProduction = env.NODE_ENV === 'production';
-export const isTest = env.NODE_ENV === 'test';
+/**
+ * Passed to `ConfigModule.forRoot({ validate })`. The returned object becomes
+ * the validated config, so `ConfigService.get` hands back the *parsed* values
+ * (numbers, string arrays) rather than the raw strings from `process.env`.
+ */
+export const validateEnv = (raw: Record<string, unknown>): Env => {
+	const parsed = envSchema.safeParse(raw);
+	if (!parsed.success) {
+		// Fail loudly and early — a half-configured API is worse than no API.
+		throw new Error(
+			`Invalid environment variables:\n${z.prettifyError(parsed.error)}`,
+		);
+	}
+	return parsed.data;
+};
