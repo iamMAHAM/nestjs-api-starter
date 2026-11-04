@@ -24,7 +24,12 @@ import { createAuth } from './auth.config.js';
 						'BETTER_AUTH_TRUSTED_ORIGINS',
 						{ infer: true },
 					),
+					AUTH_COOKIE_SAME_SITE: config.get('AUTH_COOKIE_SAME_SITE', {
+						infer: true,
+					}),
 				}),
+				// CORS is configured once, from CORS_ORIGINS, in `configureApp`.
+				disableTrustedOriginsCors: true,
 			}),
 		}),
 	],

@@ -1,13 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { HEALTH_PATH } from './app.setup.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { BusinessErrorFilter } from './common/filters/business-error.filter.js';
 import { ZodValidationFilter } from './common/filters/zod-validation.filter.js';
+import {
+	REQUEST_ID_HEADER,
+	resolveRequestId,
+} from './common/http/request-id.js';
 import { LocaleAwareZodValidationPipe } from './common/pipes/locale-aware-zod.pipe.js';
 import { type AppConfigService, validateEnv } from './env.js';
 import { I18nModule } from './i18n/i18n.module.js';
@@ -28,9 +32,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
 				pinoHttp: {
 					level: config.get('LOG_LEVEL', { infer: true }),
 					genReqId: (req, res) => {
-						const existing = req.headers['x-request-id'];
-						const id = typeof existing === 'string' ? existing : randomUUID();
-						res.setHeader('x-request-id', id);
+						const id = resolveRequestId(req.headers[REQUEST_ID_HEADER]);
+						res.setHeader(REQUEST_ID_HEADER, id);
 						return id;
 					},
 					// Never let credentials or cookies reach the log sink.
@@ -39,7 +42,9 @@ import { PrismaModule } from './prisma/prisma.module.js';
 						'req.headers.cookie',
 						'res.headers["set-cookie"]',
 					],
-					autoLogging: { ignore: (req) => req.url === '/health' },
+					autoLogging: {
+						ignore: (req) => req.url?.split('?')[0] === `/${HEALTH_PATH}`,
+					},
 					transport:
 						config.get('NODE_ENV', { infer: true }) === 'production'
 							? undefined

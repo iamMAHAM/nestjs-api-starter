@@ -2,9 +2,8 @@
 node_modules
 
 # Local env files
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
 
 # Build output
 dist

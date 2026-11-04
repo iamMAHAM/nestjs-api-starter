@@ -8,11 +8,15 @@ import type { ListUsersQueryDto, UpdateMeDto } from './users.dto.js';
 
 const PUBLIC_FIELDS = {
 	id: true,
-	email: true,
 	name: true,
-	emailVerified: true,
 	image: true,
 	createdAt: true,
+} satisfies Prisma.UserSelect;
+
+const SELF_FIELDS = {
+	...PUBLIC_FIELDS,
+	email: true,
+	emailVerified: true,
 } satisfies Prisma.UserSelect;
 
 @Injectable()
@@ -21,12 +25,7 @@ export class UsersService {
 
 	async list(query: ListUsersQueryDto) {
 		const where: Prisma.UserWhereInput = query.search
-			? {
-					OR: [
-						{ email: { contains: query.search, mode: 'insensitive' } },
-						{ name: { contains: query.search, mode: 'insensitive' } },
-					],
-				}
+			? { name: { contains: query.search, mode: 'insensitive' } }
 			: {};
 
 		const [items, total] = await this.prisma.$transaction([
@@ -43,22 +42,30 @@ export class UsersService {
 		return paginate(items, total, query);
 	}
 
-	async findById(id: string) {
-		const user = await this.prisma.user.findUnique({
-			where: { id },
-			select: PUBLIC_FIELDS,
-		});
-		if (!user) {
-			throw BusinessError.notFound(E.USER_NOT_FOUND, { interpolation: { id } });
-		}
-		return user;
+	findPublicById(id: string) {
+		return this.findOrThrow(id, PUBLIC_FIELDS);
+	}
+
+	findSelf(id: string) {
+		return this.findOrThrow(id, SELF_FIELDS);
 	}
 
 	update(id: string, input: UpdateMeDto) {
 		return this.prisma.user.update({
 			where: { id },
 			data: input,
-			select: PUBLIC_FIELDS,
+			select: SELF_FIELDS,
 		});
+	}
+
+	private async findOrThrow<S extends Prisma.UserSelect>(
+		id: string,
+		select: S,
+	) {
+		const user = await this.prisma.user.findUnique({ where: { id }, select });
+		if (!user) {
+			throw BusinessError.notFound(E.USER_NOT_FOUND, { interpolation: { id } });
+		}
+		return user;
 	}
 }

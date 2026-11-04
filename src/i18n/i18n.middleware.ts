@@ -9,18 +9,13 @@ import {
 	SUPPORTED_LOCALES,
 } from './settings.js';
 
-type MaybeAuthedRequest = Request & {
-	user?: { preference?: { language?: unknown } };
-};
-
 /**
- * Resolution order: explicit `x-locale` header > user preference > Accept-Language.
+ * Resolution order: explicit `x-locale` header > Accept-Language.
  */
 @Injectable()
 export class I18nMiddleware implements NestMiddleware {
-	use(req: MaybeAuthedRequest, _res: Response, next: NextFunction) {
+	use(req: Request, _res: Response, next: NextFunction) {
 		const fromHeader = req.header(LOCALE_HEADER);
-		const fromUser = req.user?.preference?.language;
 		const fromAccept = (req.header('accept-language') ?? '')
 			.split(',')
 			.map((entry) => entry.trim().split(';')[0]?.toLowerCase().split('-')[0])
@@ -28,11 +23,9 @@ export class I18nMiddleware implements NestMiddleware {
 
 		const locale: Locale = isSupportedLocale(fromHeader)
 			? fromHeader
-			: isSupportedLocale(fromUser)
-				? fromUser
-				: isSupportedLocale(fromAccept)
-					? fromAccept
-					: DEFAULT_LOCALE;
+			: isSupportedLocale(fromAccept)
+				? fromAccept
+				: DEFAULT_LOCALE;
 
 		localeContext.run({ locale }, () => next());
 	}

@@ -3,7 +3,13 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { ZodResponse } from 'nestjs-zod';
 import type { Auth } from '../../auth/auth.config.js';
-import { ListUsersQueryDto, UpdateMeDto, UserDto } from './users.dto.js';
+import {
+	ListUsersQueryDto,
+	PublicUserDto,
+	PublicUserPageDto,
+	UpdateMeDto,
+	UserDto,
+} from './users.dto.js';
 import { UsersService } from './users.service.js';
 
 /**
@@ -16,6 +22,7 @@ export class UsersController {
 	constructor(private readonly users: UsersService) {}
 
 	@Get()
+	@ZodResponse({ type: PublicUserPageDto })
 	@ApiOperation({ summary: 'List users (paginated)' })
 	list(@Query() query: ListUsersQueryDto) {
 		return this.users.list(query);
@@ -25,7 +32,7 @@ export class UsersController {
 	@ZodResponse({ type: UserDto })
 	@ApiOperation({ summary: 'Current session user' })
 	me(@Session() session: UserSession<Auth>) {
-		return this.users.findById(session.user.id);
+		return this.users.findSelf(session.user.id);
 	}
 
 	@Patch('me')
@@ -36,9 +43,9 @@ export class UsersController {
 	}
 
 	@Get(':id')
-	@ZodResponse({ type: UserDto })
+	@ZodResponse({ type: PublicUserDto })
 	@ApiOperation({ summary: 'Fetch a user by id' })
 	findOne(@Param('id') id: string) {
-		return this.users.findById(id);
+		return this.users.findPublicById(id);
 	}
 }

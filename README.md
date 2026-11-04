@@ -4,62 +4,65 @@ Base for all my NestJS APIs. Derived from
 `nextjs-nestjs-prisma-postgres-biome-starter`, cut down to the API alone
 (no monorepo, no frontend).
 
-| Area            | Choice                                                        |
-| --------------- | ------------------------------------------------------------- |
-| Config          | `@nestjs/config` + `ConfigService`, Zod-validated at boot      |
-| Runtime         | Node ≥ 22.12, **native ESM**, NestJS 11                        |
-| Package manager | Bun                                                            |
-| Lint / format   | Biome 2 (`biome.jsonc`)                                        |
-| Git hooks       | Lefthook (pre-commit + pre-push)                               |
-| Auth            | Better Auth + `@thallesp/nestjs-better-auth`                   |
-| ORM             | Prisma 7 (driver adapter `@prisma/adapter-pg`)                 |
-| Validation      | Zod 4 + `nestjs-zod`                                           |
-| i18n            | i18next — messages **and** validation errors are localized     |
-| API docs        | Swagger, generated from the Zod schemas                        |
-| Logging         | Pino (`nestjs-pino`) with `x-request-id`                       |
-| Tests           | Vitest (unit + e2e)                                            |
-| Security        | Helmet, CORS, `@nestjs/throttler`                              |
+| Area            | Choice                                                     |
+| --------------- | ---------------------------------------------------------- |
+| Config          | `@nestjs/config` + `ConfigService`, Zod-validated at boot  |
+| Runtime         | Node ≥ 24, **native ESM**, NestJS 11                       |
+| Package manager | Bun                                                        |
+| Lint / format   | Biome 2 (`biome.jsonc`)                                    |
+| Git hooks       | Lefthook (pre-commit + pre-push)                           |
+| Auth            | Better Auth + `@thallesp/nestjs-better-auth`               |
+| ORM             | Prisma 7 (driver adapter `@prisma/adapter-pg`)             |
+| Validation      | Zod 4 + `nestjs-zod`                                       |
+| i18n            | i18next — messages **and** validation errors are localized |
+| API docs        | Swagger, generated from the Zod schemas                    |
+| Logging         | Pino (`nestjs-pino`) with `x-request-id`                   |
+| Tests           | Vitest (unit + e2e)                                        |
+| Security        | Helmet, CORS, `@nestjs/throttler`, proxy-aware client IP   |
+| CI              | GitHub Actions + Dependabot                                |
 
 ## Getting started
 
 ```bash
 cp .env.example .env
 openssl rand -base64 32          # → BETTER_AUTH_SECRET
-bun install
-docker compose up -d             # Postgres 17
-bun run db:push                  # or db:migrate for versioned migrations
+bun install                      # also runs `prisma generate`
+docker compose up -d             # Postgres 18
+bun run db:migrate
 bun run dev                      # http://localhost:4000 — docs at /docs
 ```
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `bun run dev` | Watch mode (tsc) |
-| `bun run build` / `start` | Build, then run `dist/main.js` |
-| `bun run check` / `check:fix` | Biome lint + format |
-| `bun run check-types` | `tsc --noEmit` |
-| `bun run test` / `test:e2e` / `test:cov` | Vitest |
-| `bun run db:generate` / `db:push` / `db:migrate` / `db:studio` | Prisma |
-| `bun run auth:generate` | Regenerate the Better Auth models in `schema.prisma` |
-| `bun run i18n:gen-types` | Regenerate the translation types |
-| `bun run i18n:check` | Check key parity across locales |
+| Script                                                                       | Purpose                                              |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `bun run dev`                                                                | Watch mode (tsc)                                     |
+| `bun run build` / `start`                                                    | Build, then run `dist/main.js`                       |
+| `bun run check` / `check:fix`                                                | Biome lint + format                                  |
+| `bun run check-types`                                                        | `tsc --noEmit`                                       |
+| `bun run test` / `test:e2e` / `test:cov`                                     | Vitest                                               |
+| `bun run db:generate` / `db:push` / `db:migrate` / `db:deploy` / `db:studio` | Prisma                                               |
+| `bun run auth:generate`                                                      | Regenerate the Better Auth models in `schema.prisma` |
+| `bun run i18n:gen-types`                                                     | Regenerate the translation types                     |
+| `bun run i18n:check`                                                         | Check key parity across locales                      |
 
 ## Layout
 
 ```
 .
 ├── prisma/
-│   └── schema.prisma                 models (Better Auth + your own)
+│   ├── schema.prisma                 models (Better Auth + your own)
+│   └── migrations/                   versioned migrations (committed)
 ├── prisma.config.ts                  Prisma 7 CLI config — holds the datasource URL
 ├── src/
-│   ├── main.ts                       bootstrap: helmet, CORS, prefix, Swagger
+│   ├── main.ts                       bootstrap: logger, Swagger, listen
+│   ├── app.setup.ts                  configureApp(): proxy, helmet, CORS, prefix
 │   ├── app.module.ts                 ConfigModule + global pipe, guard, filters
 │   ├── env.ts                        Zod env schema + AppConfigService type
 │   │
 │   ├── auth/
 │   │   ├── auth.config.ts            createAuth(env) factory
-│   │   ├── auth.cli.ts               entry point for @better-auth/cli only
+│   │   ├── auth.cli.ts               entry point for the Better Auth CLI only
 │   │   └── auth.module.ts            AuthModule.forRootAsync
 │   │
 │   ├── prisma/
@@ -78,6 +81,7 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 │   ├── common/
 │   │   ├── errors/                   BusinessError + error code catalogue
 │   │   ├── filters/                  business · Zod validation · catch-all
+│   │   ├── http/                     client IP · request id
 │   │   └── pipes/                    locale-aware Zod pipe
 │   │
 │   ├── validators/                   shared Zod schemas
@@ -95,9 +99,10 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 │   └── generated/prisma/             Prisma client (gitignored)
 │
 ├── test/                             e2e specs
+├── .github/                          CI + Dependabot
 ├── biome.jsonc · lefthook.yml        lint/format + git hooks
 ├── vitest.config.ts · .e2e.ts        unit + e2e runners
-└── Dockerfile · docker-compose.yml   API image + Postgres 17
+└── Dockerfile · docker-compose.yml   API image + Postgres 18
 ```
 
 Unit tests live next to the code they cover (`*.spec.ts`); only e2e specs sit in
@@ -122,7 +127,7 @@ this.config.get('PORT', { infer: true }); // number
 `ConfigModule.forRoot({ validate: () => … })` or `overrideProvider(ConfigService)`.
 
 **One deliberate exception:** `src/auth/auth.cli.ts` loads and validates the
-environment itself. `@better-auth/cli generate` imports that file standalone to
+environment itself. The Better Auth CLI (`auth generate`) imports that file standalone to
 derive the Prisma models — it runs with no Nest container, so no `ConfigService`.
 The file does nothing but `createAuth(validateEnv(process.env))`; the app never
 imports it.
@@ -135,14 +140,18 @@ raw until the filter, which translates it into the request locale. Clients
 always get the same envelope:
 
 ```json
-{ "statusCode": 404, "code": "users:USER_NOT_FOUND", "message": "No user found with id nope." }
+{
+	"statusCode": 404,
+	"code": "users:USER_NOT_FOUND",
+	"message": "No user found with id nope."
+}
 ```
 
 So a frontend can branch on `code` without ever parsing prose.
 
-**Locale.** Resolved by middleware in this order: `x-locale` header → user
-preference → `Accept-Language`, then stored in an `AsyncLocalStorage`. Zod's
-*built-in* messages ("Invalid URL") are translated too, through the locale pack
+**Locale.** Resolved by middleware in this order: `x-locale` header →
+`Accept-Language`, then stored in an `AsyncLocalStorage`. Zod's
+_built-in_ messages ("Invalid URL") are translated too, through the locale pack
 `LocaleAwareZodValidationPipe` installs for the duration of the validation.
 
 **Adding a translation.** Edit `src/i18n/locales/<locale>/<ns>.json`, then run
@@ -151,13 +160,25 @@ has drifted from another.
 
 **Auth.** `AuthModule` registers a **global** guard: every route is protected by
 default. Use `@Public()` to open a route and `@Session()` to read the session.
-Better Auth serves `/api/auth/*`, excluded from the `/v1` prefix.
+Better Auth serves `/api/auth/*`, excluded from the `/v1` prefix (so is
+`/health`). Other users are exposed without their email (`PublicUserDto`); only
+`/v1/users/me` returns it. Email verification is not enabled — wire a mailer and
+set `requireEmailVerification` before opening sign-up in production.
+
+**Behind a proxy.** Set `TRUST_PROXY` (hop count or proxy IPs/CIDRs) so `req.ip`
+is the real client. It feeds both rate limiters: Nest's throttler directly, and
+Better Auth through the `x-client-ip` header `clientIpMiddleware` rewrites on
+every request. Leave it `false` when the API is exposed directly.
+
+**Cookies.** `AUTH_COOKIE_SAME_SITE=lax` (default) covers a frontend on the same
+site (`app.example.com` + `api.example.com`). Use `none` only for a frontend on
+another site; it requires HTTPS. CORS is driven by `CORS_ORIGINS` alone.
 
 ## Two traps specific to this stack
 
 **1 — `import type` breaks dependency injection.** NestJS resolves constructor
 dependencies from the metadata `emitDecoratorMetadata` writes, which requires a
-*value* import. Biome cannot tell that apart from a genuine type-only import,
+_value_ import. Biome cannot tell that apart from a genuine type-only import,
 and its autofix breaks DI silently at runtime. Hence
 `style/useImportType: off` on `src/**/*.ts` in `biome.jsonc`.
 
@@ -181,6 +202,12 @@ The project is native ESM (`"type": "module"`), because `better-auth` and
 
 ## Docker
 
-`docker-compose.yml` only provides Postgres (dev). The `Dockerfile` is a
-multi-stage image for the API: built with Bun, run on `node:22-alpine` as a
-non-root user.
+`docker-compose.yml` only provides Postgres (dev, bound to localhost). The
+`Dockerfile` is a multi-stage image for the API: built with Bun, run on
+`node:24-alpine` as a non-root user, with a `HEALTHCHECK` on `/health`.
+Migrations run from a separate target:
+
+```bash
+docker build --target migrate -t api-migrate .
+docker run --rm -e DATABASE_URL=… api-migrate
+```

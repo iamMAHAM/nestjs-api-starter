@@ -22,6 +22,34 @@ describe('env validation', () => {
 		expect(env.CORS_ORIGINS).toEqual(['a.com', 'b.com']);
 	});
 
+	it.each([
+		[undefined, false],
+		['false', false],
+		['1', 1],
+		[
+			'10.0.0.0/8, loopback, 192.168.1.10',
+			['10.0.0.0/8', 'loopback', '192.168.1.10'],
+		],
+		['fd00::/8', ['fd00::/8']],
+	])('parses TRUST_PROXY=%s', (TRUST_PROXY, expected) => {
+		expect(validateEnv({ ...VALID, TRUST_PROXY }).TRUST_PROXY).toEqual(
+			expected,
+		);
+	});
+
+	it.each(['true', 'proxy.local', '10.0.0.0/33'])(
+		'rejects TRUST_PROXY=%s',
+		(TRUST_PROXY) => {
+			expect(() => validateEnv({ ...VALID, TRUST_PROXY })).toThrow(
+				/TRUST_PROXY/,
+			);
+		},
+	);
+
+	it('defaults auth cookies to SameSite=Lax', () => {
+		expect(validateEnv(VALID).AUTH_COOKIE_SAME_SITE).toBe('lax');
+	});
+
 	// ConfigService.get must hand back the *parsed* value, not the raw string
 	// still sitting in process.env — that ordering is what makes typed config work.
 	it('serves parsed values through ConfigService', async () => {

@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { CLIENT_IP_HEADER } from '../common/http/client-ip.js';
 import type { Env } from '../env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 
@@ -12,6 +13,7 @@ export type AuthEnv = Pick<
 	| 'BETTER_AUTH_SECRET'
 	| 'BETTER_AUTH_URL'
 	| 'BETTER_AUTH_TRUSTED_ORIGINS'
+	| 'AUTH_COOKIE_SAME_SITE'
 >;
 
 /**
@@ -41,11 +43,10 @@ export const createAuth = (env: AuthEnv) => {
 		advanced: {
 			defaultCookieAttributes: {
 				httpOnly: true,
-				// Cross-site cookies require SameSite=None + Secure, which browsers
-				// only honour over HTTPS — so keep Lax in local development.
-				sameSite: isProduction ? 'none' : 'lax',
-				secure: isProduction,
+				sameSite: env.AUTH_COOKIE_SAME_SITE,
+				secure: isProduction || env.AUTH_COOKIE_SAME_SITE === 'none',
 			},
+			ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
 		},
 	});
 };

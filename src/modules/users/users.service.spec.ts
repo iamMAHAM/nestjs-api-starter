@@ -34,15 +34,36 @@ describe('UsersService', () => {
 
 	it('returns the user when it exists', async () => {
 		prismaMock.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.c' });
-		await expect(users.findById('u1')).resolves.toEqual({
+		await expect(users.findSelf('u1')).resolves.toEqual({
 			id: 'u1',
 			email: 'a@b.c',
 		});
 	});
 
+	it('never selects the email of another user', async () => {
+		prismaMock.user.findUnique.mockResolvedValue({ id: 'u2' });
+		await users.findPublicById('u2');
+		expect(prismaMock.user.findUnique).toHaveBeenCalledWith(
+			expect.objectContaining({
+				select: expect.not.objectContaining({ email: true }),
+			}),
+		);
+	});
+
+	it('searches by name only', async () => {
+		prismaMock.$transaction.mockResolvedValue([[], 0]);
+		await users.list({ page: 1, perPage: 20, search: 'bob' });
+		expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { name: { contains: 'bob', mode: 'insensitive' } },
+				select: expect.not.objectContaining({ email: true }),
+			}),
+		);
+	});
+
 	it('throws a 404 BusinessError carrying the id for interpolation', async () => {
 		prismaMock.user.findUnique.mockResolvedValue(null);
-		const error = await users.findById('missing').catch((e) => e);
+		const error = await users.findPublicById('missing').catch((e) => e);
 		expect(error).toBeInstanceOf(BusinessError);
 		expect(error.code).toBe(E.USER_NOT_FOUND);
 		expect(error.httpStatus).toBe(404);

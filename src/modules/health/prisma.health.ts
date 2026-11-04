@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
 	type HealthIndicatorResult,
 	HealthIndicatorService,
@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 
 @Injectable()
 export class PrismaHealthIndicator {
+	private readonly logger = new Logger(PrismaHealthIndicator.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly healthIndicatorService: HealthIndicatorService,
@@ -21,10 +23,11 @@ export class PrismaHealthIndicator {
 				responseTime: Math.round(performance.now() - startedAt),
 			});
 		} catch (error) {
-			return indicator.down({
-				message:
-					error instanceof Error ? error.message : 'Database unreachable',
-			});
+			// The probe is public: log the driver error, return a generic one.
+			this.logger.error(
+				error instanceof Error ? error.message : 'Database unreachable',
+			);
+			return indicator.down({ message: 'Database unreachable' });
 		}
 	}
 }

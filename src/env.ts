@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import type { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 
@@ -10,6 +11,50 @@ const csv = z
 			.filter(Boolean),
 	)
 	.pipe(z.array(z.string()).min(1));
+
+const PROXY_RANGE_KEYWORDS = new Set(['loopback', 'linklocal', 'uniquelocal']);
+
+const isIpOrCidr = (entry: string) => {
+	const [address = '', prefix, ...rest] = entry.split('/');
+	const version = isIP(address);
+	if (version === 0 || rest.length > 0) return false;
+	if (prefix === undefined) return true;
+	if (!/^\d+$/.test(prefix)) return false;
+	return Number(prefix) <= (version === 4 ? 32 : 128);
+};
+
+// Express `trust proxy`: `false`, a hop count, or IPs/CIDRs/keywords.
+const trustProxy = z
+	.string()
+	.default('false')
+	.transform((raw, ctx): false | number | string[] => {
+		const value = raw.trim();
+		if (value === '' || value === 'false') return false;
+		if (/^\d+$/.test(value)) return Number(value);
+		if (value === 'true') {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					'TRUST_PROXY=true lets any client spoof its IP through X-Forwarded-For. Use a hop count (e.g. 1) or the proxy addresses instead.',
+			});
+			return z.NEVER;
+		}
+		const entries = value
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter(Boolean);
+		const invalid = entries.filter(
+			(entry) => !PROXY_RANGE_KEYWORDS.has(entry) && !isIpOrCidr(entry),
+		);
+		if (invalid.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				message: `TRUST_PROXY has entries that are neither an IP, a CIDR nor loopback/linklocal/uniquelocal: ${invalid.join(', ')}`,
+			});
+			return z.NEVER;
+		}
+		return entries;
+	});
 
 export const envSchema = z.object({
 	NODE_ENV: z
@@ -29,9 +74,11 @@ export const envSchema = z.object({
 	BETTER_AUTH_URL: z.url().default('http://localhost:4000'),
 	// `.default()` on a piped schema takes the *output* type, hence the arrays.
 	BETTER_AUTH_TRUSTED_ORIGINS: csv.default(['http://localhost:3000']),
+	AUTH_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
 
 	CORS_ORIGINS: csv.default(['http://localhost:3000']),
 	API_PREFIX: z.string().default('v1'),
+	TRUST_PROXY: trustProxy,
 
 	THROTTLE_TTL: z.coerce.number().int().positive().default(60_000),
 	THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),

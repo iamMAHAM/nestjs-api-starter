@@ -1,20 +1,22 @@
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
 
 /**
  * Requires a reachable Postgres — `docker compose up -d` first.
  */
 describe('Health (e2e)', () => {
-	let app: INestApplication;
+	let app: NestExpressApplication;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
 			imports: [AppModule],
 		}).compile();
-		app = moduleRef.createNestApplication();
+		app = moduleRef.createNestApplication<NestExpressApplication>();
+		configureApp(app);
 		await app.init();
 	});
 
@@ -37,6 +39,14 @@ describe('Health (e2e)', () => {
 	});
 
 	it('rejects unauthenticated access to a protected route', async () => {
-		await request(app.getHttpServer()).get('/users/me').expect(401);
+		await request(app.getHttpServer()).get('/v1/users/me').expect(401);
+	});
+
+	it('replaces a malformed x-request-id', async () => {
+		const res = await request(app.getHttpServer())
+			.get('/health')
+			.set('x-request-id', 'bad id with spaces')
+			.expect(200);
+		expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
 	});
 });
