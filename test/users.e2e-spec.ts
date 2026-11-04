@@ -74,4 +74,33 @@ describe('Users (e2e)', () => {
 			.send({ image: 'javascript:alert(1)' })
 			.expect(400);
 	});
+
+	it('rejects a non-https avatar through Better Auth routes too', async () => {
+		const other = `e2e-${randomUUID()}@example.com`;
+		try {
+			await request(app.getHttpServer())
+				.post('/api/auth/sign-up/email')
+				.send({
+					email: other,
+					password: 'correct-horse-battery',
+					name: 'XSS',
+					image: 'javascript:alert(1)',
+				})
+				.expect(400);
+		} finally {
+			await app.get(PrismaService).user.deleteMany({ where: { email: other } });
+		}
+
+		await request(app.getHttpServer())
+			.post('/api/auth/update-user')
+			.set('Cookie', cookie)
+			.set('Origin', 'http://localhost:3000')
+			.send({ image: 'javascript:alert(1)' })
+			.expect(400);
+
+		const me = await request(app.getHttpServer())
+			.get('/v1/users/me')
+			.set('Cookie', cookie);
+		expect(me.body.image).toBeNull();
+	});
 });

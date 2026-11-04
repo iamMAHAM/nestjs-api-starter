@@ -1,9 +1,21 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError } from 'better-auth/api';
 import { CLIENT_IP_HEADER } from '../common/http/client-ip.js';
 import type { Env } from '../env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { isHttpsUrl } from '../validators/shared/https-url.js';
+
+// Better Auth's sign-up and update-user routes accept any string as `image`.
+const assertHttpsImage = async (user: { image?: unknown }) => {
+	if (user.image != null && !isHttpsUrl(user.image)) {
+		throw new APIError('BAD_REQUEST', {
+			code: 'INVALID_IMAGE_URL',
+			message: 'image must be an https URL',
+		});
+	}
+};
 
 /** Only the slice of the environment Better Auth actually needs. */
 export type AuthEnv = Pick<
@@ -39,6 +51,12 @@ export const createAuth = (env: AuthEnv) => {
 		session: {
 			expiresIn: 60 * 60 * 24 * 7, // 7 days
 			updateAge: 60 * 60 * 24, // refresh the cookie once a day
+		},
+		databaseHooks: {
+			user: {
+				create: { before: assertHttpsImage },
+				update: { before: assertHttpsImage },
+			},
 		},
 		advanced: {
 			defaultCookieAttributes: {

@@ -1,18 +1,24 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import {
+	httpsUrlSchema,
+	isHttpsUrl,
+} from '../../validators/shared/https-url.js';
 import { isoDate } from '../../validators/shared/iso-date.js';
 import {
 	paginatedSchema,
 	paginationSchema,
 } from '../../validators/shared/pagination.js';
 
-const httpsUrl = z.url({ protocol: /^https$/ });
-
 // What other users may see — no email.
 export const publicUserSchema = z.object({
 	id: z.string(),
 	name: z.string().nullable(),
-	image: z.string().nullable(),
+	// Rows written before the https rule never reach a client.
+	image: z.preprocess(
+		(value) => (isHttpsUrl(value) ? value : null),
+		z.string().nullable(),
+	),
 	createdAt: isoDate,
 });
 
@@ -27,7 +33,7 @@ export const listUsersQuerySchema = paginationSchema.extend({
 
 export const updateMeSchema = z.object({
 	name: z.string().trim().min(1).max(80).optional(),
-	image: httpsUrl.max(2048).nullable().optional(),
+	image: httpsUrlSchema.nullable().optional(),
 });
 
 /** `createZodDto` gives Nest a class to reflect on, and Swagger a schema. */
