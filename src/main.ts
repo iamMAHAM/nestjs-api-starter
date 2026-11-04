@@ -5,7 +5,6 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
-import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { AppModule } from './app.module.js';
 import { configureApp } from './app.setup.js';
 import type { AppConfigService } from './env.js';
@@ -19,8 +18,7 @@ const setupSwagger = (app: INestApplication) => {
 		.build();
 
 	const document = SwaggerModule.createDocument(app, config);
-	// Zod-derived schemas carry helpers Swagger UI chokes on; strip them.
-	SwaggerModule.setup('docs', app, cleanupOpenApiDoc(document), {
+	SwaggerModule.setup('docs', app, document, {
 		swaggerOptions: { persistAuthorization: true },
 	});
 };

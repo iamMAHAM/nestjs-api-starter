@@ -7,13 +7,13 @@ Base for all my NestJS APIs. Derived from
 | Area            | Choice                                                     |
 | --------------- | ---------------------------------------------------------- |
 | Config          | `@nestjs/config` + `ConfigService`, Zod-validated at boot  |
-| Runtime         | Node ≥ 24, **native ESM**, NestJS 11                       |
+| Runtime         | Node ≥ 24, **native ESM**, NestJS 12                       |
 | Package manager | Bun                                                        |
 | Lint / format   | Biome 2 (`biome.jsonc`)                                    |
 | Git hooks       | Lefthook (pre-commit + pre-push)                           |
 | Auth            | Better Auth + `@thallesp/nestjs-better-auth`               |
 | ORM             | Prisma 7 (driver adapter `@prisma/adapter-pg`)             |
-| Validation      | Zod 4 + `nestjs-zod`                                       |
+| Validation      | Zod 4 through Nest's built-in Standard Schema support      |
 | i18n            | i18next — messages **and** validation errors are localized |
 | API docs        | Swagger, generated from the Zod schemas                    |
 | Logging         | Pino (`nestjs-pino`) with `x-request-id`                   |
@@ -80,9 +80,9 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 │   │
 │   ├── common/
 │   │   ├── errors/                   BusinessError + error code catalogue
-│   │   ├── filters/                  business · Zod validation · catch-all
-│   │   ├── http/                     client IP · request id
-│   │   └── pipes/                    locale-aware Zod pipe
+│   │   ├── filters/                  business · schema validation · catch-all
+│   │   ├── http/                     client IP · request id · @SchemaResponse
+│   │   └── pipes/                    locale-aware validation pipe
 │   │
 │   ├── validators/                   shared Zod schemas
 │   │   ├── auth/                     sign-in · sign-up · password
@@ -91,9 +91,9 @@ bun run dev                      # http://localhost:4000 — docs at /docs
 │   ├── modules/
 │   │   ├── health/                   liveness + database readiness probe
 │   │   └── users/                    reference module — copy this one
-│   │       ├── users.dto.ts          Zod schemas → createZodDto
+│   │       ├── users.dto.ts          Zod schemas + inferred types
 │   │       ├── users.service.ts      business logic, throws BusinessError
-│   │       ├── users.controller.ts   routes, @Session(), @ZodResponse
+│   │       ├── users.controller.ts   routes, @Body({ schema }), @SchemaResponse
 │   │       └── users.service.spec.ts
 │   │
 │   └── generated/prisma/             Prisma client (gitignored)
@@ -151,8 +151,15 @@ So a frontend can branch on `code` without ever parsing prose.
 
 **Locale.** Resolved by middleware in this order: `x-locale` header →
 `Accept-Language`, then stored in an `AsyncLocalStorage`. Zod's
-_built-in_ messages ("Invalid URL") are translated too, through the locale pack
-`LocaleAwareZodValidationPipe` installs for the duration of the validation.
+_built-in_ messages ("Invalid URL") are translated too: `LocaleAwareValidationPipe`
+passes the request's locale pack to each parse.
+
+**Validation.** Pass a Zod schema to the parameter decorator —
+`@Body({ schema })`, `@Query({ schema })`, `@Param('id', { schema })` — and the
+global `LocaleAwareValidationPipe` validates and transforms it. Type the
+parameter with `z.output<typeof schema>`. Responses go through
+`@SchemaResponse(schema)`, which strips unknown fields via
+`StandardSchemaSerializerInterceptor` and documents the response in Swagger.
 
 **Adding a translation.** Edit `src/i18n/locales/<locale>/<ns>.json`, then run
 `bun run i18n:gen-types`. The pre-commit hook rejects a commit where one locale
@@ -161,7 +168,7 @@ has drifted from another.
 **Auth.** `AuthModule` registers a **global** guard: every route is protected by
 default. Use `@Public()` to open a route and `@Session()` to read the session.
 Better Auth serves `/api/auth/*`, excluded from the `/v1` prefix (so is
-`/health`). Other users are exposed without their email (`PublicUserDto`); only
+`/health`). Other users are exposed without their email (`publicUserSchema`); only
 `/v1/users/me` returns it. Email verification is not enabled — wire a mailer and
 set `requireEmailVerification` before opening sign-up in production.
 

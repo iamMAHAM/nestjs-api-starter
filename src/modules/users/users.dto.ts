@@ -1,4 +1,3 @@
-import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import {
 	httpsUrlSchema,
@@ -27,6 +26,8 @@ export const userSchema = publicUserSchema.extend({
 	emailVerified: z.boolean(),
 });
 
+export const publicUserPageSchema = paginatedSchema(publicUserSchema);
+
 export const listUsersQuerySchema = paginationSchema.extend({
 	search: z.string().trim().min(1).max(80).optional(),
 });
@@ -36,11 +37,5 @@ export const updateMeSchema = z.object({
 	image: httpsUrlSchema.nullable().optional(),
 });
 
-/** `createZodDto` gives Nest a class to reflect on, and Swagger a schema. */
-export class UserDto extends createZodDto(userSchema) {}
-export class PublicUserDto extends createZodDto(publicUserSchema) {}
-export class PublicUserPageDto extends createZodDto(
-	paginatedSchema(publicUserSchema),
-) {}
-export class ListUsersQueryDto extends createZodDto(listUsersQuerySchema) {}
-export class UpdateMeDto extends createZodDto(updateMeSchema) {}
+export type ListUsersQuery = z.output<typeof listUsersQuerySchema>;
+export type UpdateMe = z.output<typeof updateMeSchema>;

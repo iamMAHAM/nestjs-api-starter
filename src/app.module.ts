@@ -1,18 +1,24 @@
-import { Module } from '@nestjs/common';
+import { Module, StandardSchemaSerializerInterceptor } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
+import {
+	APP_FILTER,
+	APP_GUARD,
+	APP_INTERCEPTOR,
+	APP_PIPE,
+	Reflector,
+} from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { HEALTH_PATH } from './app.setup.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { BusinessErrorFilter } from './common/filters/business-error.filter.js';
-import { ZodValidationFilter } from './common/filters/zod-validation.filter.js';
+import { SchemaValidationFilter } from './common/filters/schema-validation.filter.js';
 import {
 	REQUEST_ID_HEADER,
 	resolveRequestId,
 } from './common/http/request-id.js';
-import { LocaleAwareZodValidationPipe } from './common/pipes/locale-aware-zod.pipe.js';
+import { LocaleAwareValidationPipe } from './common/pipes/locale-aware-validation.pipe.js';
 import { type AppConfigService, validateEnv } from './env.js';
 import { I18nModule } from './i18n/i18n.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -71,11 +77,17 @@ import { PrismaModule } from './prisma/prisma.module.js';
 	],
 	providers: [
 		{ provide: APP_GUARD, useClass: ThrottlerGuard },
-		{ provide: APP_PIPE, useClass: LocaleAwareZodValidationPipe },
+		{ provide: APP_PIPE, useClass: LocaleAwareValidationPipe },
+		{
+			provide: APP_INTERCEPTOR,
+			inject: [Reflector],
+			useFactory: (reflector: Reflector) =>
+				new StandardSchemaSerializerInterceptor(reflector),
+		},
 		// Filters are matched bottom-up: the catch-all must be registered first.
 		{ provide: APP_FILTER, useClass: AllExceptionsFilter },
 		{ provide: APP_FILTER, useClass: BusinessErrorFilter },
-		{ provide: APP_FILTER, useClass: ZodValidationFilter },
+		{ provide: APP_FILTER, useClass: SchemaValidationFilter },
 	],
 })
 export class AppModule {}

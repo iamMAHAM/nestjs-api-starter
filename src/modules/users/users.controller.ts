@@ -1,14 +1,16 @@
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
-import { ZodResponse } from 'nestjs-zod';
 import type { Auth } from '../../auth/auth.config.js';
+import { SchemaResponse } from '../../common/http/schema-response.decorator.js';
 import {
-	ListUsersQueryDto,
-	PublicUserDto,
-	PublicUserPageDto,
-	UpdateMeDto,
-	UserDto,
+	type ListUsersQuery,
+	listUsersQuerySchema,
+	publicUserPageSchema,
+	publicUserSchema,
+	type UpdateMe,
+	updateMeSchema,
+	userSchema,
 } from './users.dto.js';
 import { UsersService } from './users.service.js';
 
@@ -22,28 +24,31 @@ export class UsersController {
 	constructor(private readonly users: UsersService) {}
 
 	@Get()
-	@ZodResponse({ type: PublicUserPageDto })
+	@SchemaResponse(publicUserPageSchema)
 	@ApiOperation({ summary: 'List users (paginated)' })
-	list(@Query() query: ListUsersQueryDto) {
+	list(@Query({ schema: listUsersQuerySchema }) query: ListUsersQuery) {
 		return this.users.list(query);
 	}
 
 	@Get('me')
-	@ZodResponse({ type: UserDto })
+	@SchemaResponse(userSchema)
 	@ApiOperation({ summary: 'Current session user' })
 	me(@Session() session: UserSession<Auth>) {
 		return this.users.findSelf(session.user.id);
 	}
 
 	@Patch('me')
-	@ZodResponse({ type: UserDto })
+	@SchemaResponse(userSchema)
 	@ApiOperation({ summary: 'Update the current user profile' })
-	updateMe(@Session() session: UserSession<Auth>, @Body() body: UpdateMeDto) {
+	updateMe(
+		@Session() session: UserSession<Auth>,
+		@Body({ schema: updateMeSchema }) body: UpdateMe,
+	) {
 		return this.users.update(session.user.id, body);
 	}
 
 	@Get(':id')
-	@ZodResponse({ type: PublicUserDto })
+	@SchemaResponse(publicUserSchema)
 	@ApiOperation({ summary: 'Fetch a user by id' })
 	findOne(@Param('id') id: string) {
 		return this.users.findPublicById(id);
