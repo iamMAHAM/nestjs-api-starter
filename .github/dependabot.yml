@@ -7,6 +7,15 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # NestJS 12 is blocked by nestjs-zod; TS 7 by @thallesp/nestjs-better-auth.
+      - dependency-name: "@nestjs/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Types track the minimum supported Node (engines).
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

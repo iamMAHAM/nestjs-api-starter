@@ -204,7 +204,7 @@ The project is native ESM (`"type": "module"`), because `better-auth` and
 
 `docker-compose.yml` only provides Postgres (dev, bound to localhost). The
 `Dockerfile` is a multi-stage image for the API: built with Bun, run on
-`node:24-alpine` as a non-root user, with a `HEALTHCHECK` on `/health`.
+`node:26-alpine` as a non-root user, with a `HEALTHCHECK` on `/health`.
 Migrations run from a separate target:
 
 ```bash

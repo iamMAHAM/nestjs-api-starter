@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
@@ -50,9 +53,46 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run db:deploy
       - run: bun run test:e2e
+
+  docker:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app?schema=public
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --target migrate -t api-migrate .
+      - run: docker build -t api .
+      - run: docker run --rm --network host -e DATABASE_URL api-migrate
+      - name: Boot the image and probe /health
+        run: |
+          docker run -d --name api --network host -e DATABASE_URL \
+            -e BETTER_AUTH_SECRET=ci-only-secret-not-used-anywhere-else-0000 api
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:4000/health && exit 0
+            sleep 2
+          done
+          docker logs api
+          exit 1
