@@ -8,7 +8,7 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # NestJS 12 is blocked by nestjs-zod; TS 7 by @thallesp/nestjs-better-auth.
+      # Review framework majors by hand; TS 7 is outside @nestjs/swagger and @thallesp/nestjs-better-auth's peer ranges.
       - dependency-name: "@nestjs/*"
         update-types: [version-update:semver-major]
       - dependency-name: typescript
